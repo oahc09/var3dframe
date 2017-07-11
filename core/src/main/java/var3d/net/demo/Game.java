@@ -14,6 +14,7 @@ public class Game extends VGame {
 
     @Override
     public void init() {
+        setResources(R.class);
         openProtect("image");//加密image文件夹资源
         //unProtect("image");
         // showFps();//显示fps

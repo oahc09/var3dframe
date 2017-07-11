@@ -61,9 +61,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import var3d.net.center.freefont.FreeBitmapFont;
 import var3d.net.center.freefont.FreePaint;
+import var3d.net.demo.R;
 
 /**
  * Var3D核心框架
@@ -72,22 +74,22 @@ import var3d.net.center.freefont.FreePaint;
  * @version 1.6.0
  */
 public abstract class VGame implements ApplicationListener {
-    public int NOEFFECTE = 0;// 无效果
-    public int MOVELEFT = 10;// 从右到左
-    public int MOVERIGHT = 11;// 从左到右
-    public int MOVEODOWN = 12;// 从上到下
-    public int MOVEUP = 13;// 从下到上
-    public int FADEIN = 14;// 渐洳
-    public int POPUP = 15;// 弹出(目前只支持dialog)
+    public final int NOEFFECTE = 0;// 无效果
+    public final int MOVELEFT = 10;// 从右到左
+    public final int MOVERIGHT = 11;// 从左到右
+    public final int MOVEODOWN = 12;// 从上到下
+    public final int MOVEUP = 13;// 从下到上
+    public final int FADEIN = 14;// 渐洳
+    public final int POPUP = 15;// 弹出(目前只支持dialog)
     public int WIDTH = 480;// 宽
     public int HEIGHT = 800;// 高
     private int centerX = 240;// 一半宽
     private int centerY = 400;// 一半高
-    public int shortScreenWidth = 1242;
-    public int shortScreenHeight = 2208;
+    public final int shortScreenWidth = 1242;
+    public final int shortScreenHeight = 2208;
 
     private InputMultiplexer multiplexer;// 触控
-    private AssetManager assets = new AssetManager();// 资源管理
+    private final AssetManager assets = new AssetManager();// 资源管理
     private VStage stage;// 当前stage
     private VStage stageLoad;// loading动画的stage
     private VStage stageTop;// 顶层stage,用于盛放dialog
@@ -95,13 +97,13 @@ public abstract class VGame implements ApplicationListener {
     private boolean isLoading = false;// 是否加载中
     private PixmapPacker packer = null;// 用于将单个字符合成到大纹理的packer
     public int pageWidth = 1024;// 大纹理尺寸
-    public TextureFilter filter = TextureFilter.Linear;// 纹理缩放形式
+    public final TextureFilter filter = TextureFilter.Linear;// 纹理缩放形式
 
-    private HashMap<String, Texture> textures = new HashMap<String, Texture>();// 保存new出来得资源或者网络资源
+    private final HashMap<String, Texture> textures = new HashMap<String, Texture>();// 保存new出来得资源或者网络资源
     private TextureAtlas atlas;
-    private HashMap<String, VStage> pool = new HashMap<String, VStage>();// stage列表
-    private HashMap<String, VDialog> poolDialog = new HashMap<String, VDialog>();// dialog列表
-    private HashMap<String, FreeBitmapFont> fonts = new HashMap<String, FreeBitmapFont>();// 字体列表
+    private final HashMap<String, VStage> pool = new HashMap<String, VStage>();// stage列表
+    private final HashMap<String, VDialog> poolDialog = new HashMap<String, VDialog>();// dialog列表
+    private final HashMap<String, FreeBitmapFont> fonts = new HashMap<String, FreeBitmapFont>();// 字体列表
     // private String prefStageName;// 上一个页面的名字
     @SuppressWarnings("rawtypes")
     private Class prefStage;
@@ -117,7 +119,7 @@ public abstract class VGame implements ApplicationListener {
     private boolean isReProtect = false;// 是否关闭保护图片资源
 
     private Object userData;// 场景切换时用于数据中转
-    private HashMap<String, Object> userDatas = new HashMap<String, Object>();// 用于数据中转
+    private final HashMap<String, Object> userDatas = new HashMap<String, Object>();// 用于数据中转
 
     public VGame(VListener varListener) {
         this.var3dListener = varListener;
@@ -165,15 +167,27 @@ public abstract class VGame implements ApplicationListener {
         isMusic = save.getBoolean("isMusic", true);
         isSound = save.getBoolean("isSound", true);
         // 全球化字体方案
-        bundle = new VBundle(var3dListener);
+        if (bundle == null) bundle = new VBundle(var3dListener);
+        // 创建一个默认动态文本
+        FreeBitmapFont font = new FreeBitmapFont(this, new FreePaint(
+                getDefaultFontSize()));
+        font.appendText("01234567890LoadingC" + getHeap());
+        fonts.put("font", font);
+        setStageLoad(StageLoad.class);
+        init();
+        var3dListener.create();
+    }
+
+    //设置R文件
+    public <T> void setResources(Class<T> resource) {
+        if (bundle == null) bundle = new VBundle(var3dListener);
         // 将多语言本地文本赋值到R文件，如果有的话
         try {
             @SuppressWarnings("rawtypes")
-            Class R_clazz = Class.forName(getProjectName() + ".R");
+            Class R_clazz = resource;
             @SuppressWarnings("rawtypes")
             Class innerClazz[] = R_clazz.getDeclaredClasses();
-            for (@SuppressWarnings("rawtypes")
-                    Class cls : innerClazz) {
+            for (@SuppressWarnings("rawtypes") Class cls : innerClazz) {
                 String name = cls.getSimpleName();
                 if (name.equals("strings")) {
                     Field[] fields = cls.getDeclaredFields();
@@ -185,19 +199,115 @@ public abstract class VGame implements ApplicationListener {
                     break;
                 }
             }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
-        // 创建一个默认动态文本
-        FreeBitmapFont font = new FreeBitmapFont(this, new FreePaint(
-                getDefaultFontSize()));
-        font.appendText("01234567890LoadingC" + getHeap());
-        fonts.put("font", font);
-        setStageLoad(StageLoad.class);
-        init();
-        var3dListener.create();
+    }
+
+
+    /**
+     * 加载文件夹里的图片并合成到大图,如果文件后缀不是jpg和png将自动忽略
+     *
+     * @param R_Classs R资源文件索引
+     */
+    public void loadFolderToPack(Class<?>... R_Classs) {
+        for (Class<?> rClass : R_Classs) {
+            Class innerClazz[] = rClass.getDeclaredClasses();
+            if (innerClazz.length > 0) loadFolderToPack(innerClazz);
+            Field[] fields = rClass.getDeclaredFields();
+            for (Field field : fields) {
+                if (field.getModifiers() == 9) {
+                    try {
+                        String path = (String) field.get(null);
+                        if (path.endsWith(".jpg") || path.endsWith(".png")) {
+                            loadToPack(path);
+                        }
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 预加载文件夹里的文件
+     *
+     * @param type     文件类型
+     * @param R_Classs R资源文件索引
+     * @param <T>
+     */
+    public <T> void loadFolder(Class<T> type, Class<?>... R_Classs) {
+        for (Class<?> rClass : R_Classs) {
+            Class innerClazz[] = rClass.getDeclaredClasses();
+            if (innerClazz.length > 0) loadFolderToPack(innerClazz);
+            Field[] fields = rClass.getDeclaredFields();
+            for (Field field : fields) {
+                if (field.getModifiers() == 9) {
+                    try {
+                        String path = (String) field.get(null);
+                        load(type, path);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 加载文件夹里的资源,并排除指定的资源
+     */
+    private HashSet<String> hashSet = new HashSet<>();
+
+    public <T> void loadFolderExcept(Class<T> type, Class<?> R_Classs, String... excepts) {
+        for (String name : excepts) {
+            hashSet.add(name);
+        }
+        Class innerClazz[] = R_Classs.getDeclaredClasses();
+        if (innerClazz.length > 0) loadFolderToPack(innerClazz);
+        Field[] fields = R_Classs.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getModifiers() == 9) {
+                try {
+                    String path = (String) field.get(null);
+                    if (!hashSet.contains(path)) {
+                        load(type, path);
+                    }
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        hashSet.clear();
+    }
+
+    /**
+     * 加载文件夹里的图片并合成到大图,自动排除非jpg和png资源以及排除参数指定的任意资源
+     */
+    public void loadFolderToPackExcept(Class<?> R_Classs, String... excepts) {
+        for (String name : excepts) {
+            hashSet.add(name);
+        }
+        Class innerClazz[] = R_Classs.getDeclaredClasses();
+        if (innerClazz.length > 0) loadFolderToPack(innerClazz);
+        Field[] fields = R_Classs.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getModifiers() == 9) {
+                try {
+                    String path = (String) field.get(null);
+                    if (path.endsWith(".jpg") || path.endsWith(".png")) {
+                        if (!hashSet.contains(path)) {
+                            loadToPack(path);
+                            Gdx.app.log("aaaaa", path);
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        hashSet.clear();
     }
 
     private String language;
@@ -267,7 +377,7 @@ public abstract class VGame implements ApplicationListener {
      * @param
      */
     public <T> void setStageLoad(Class<T> type) {
-        this.stageLoad = getStage(type);
+        this.stageLoad = getStageLoad(type);
     }
 
     public boolean getIsLoading() {
@@ -437,6 +547,48 @@ public abstract class VGame implements ApplicationListener {
      */
 
     private <T> VStage getStage(Class<T> type) {
+        String name = type.getName();
+        VStage dStage = pool.get(name);
+        if (dStage != null) {
+            stage = dStage;
+            dStage.reStart();
+            return dStage;
+        }
+        try {
+            dStage = (VStage) type.getConstructor(VGame.class)
+                    .newInstance(this);
+            isLoading = true;
+            pool.put(name, dStage);
+            return dStage;
+        } catch (IllegalArgumentException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (InstantiationException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (IllegalAccessException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (InvocationTargetException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (NoSuchMethodException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private <T> VStage getStageLoad(Class<T> type) {
         String name = type.getName();
         VStage dStage = pool.get(name);
         if (dStage != null) {
@@ -1091,6 +1243,42 @@ public abstract class VGame implements ApplicationListener {
         ui.setActor(actor);
         return ui;
     }
+
+    /**
+     * 创建UI
+     */
+    public <T extends Actor> UI<T> getUI(Class<T> type, Object... objects) {
+        T actor = null;
+        try {
+            Class<?> types[] = new Class[objects.length];
+            for (int i = 0; i < objects.length; i++) {
+                types[i] = objects[i].getClass();
+            }
+            actor = type.getConstructor(types).newInstance(objects);
+        } catch (IllegalArgumentException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        UI<T> ui = new UI<T>(this);
+        ui.setActor(actor);
+        return ui;
+    }
+
 
     /**
      * 创建Image

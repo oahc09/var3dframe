@@ -1,13 +1,11 @@
 package var3d.net.center;
 
-import java.io.File;
-import java.util.ArrayList;
-
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -15,9 +13,11 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.viewport.ScalingViewport;
-import com.badlogic.gdx.utils.Align;
+
+import java.util.ArrayList;
 
 public abstract class VStage extends Stage {
     public VGame game;
@@ -61,29 +61,43 @@ public abstract class VStage extends Stage {
 
     public void resize(float width, float height) {
         changing(width, height);
-        getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(),
-                true);
-        float bl = (float) game.WIDTH / (float) game.HEIGHT
-                * Gdx.graphics.getHeight() / Gdx.graphics.getWidth();
+        getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        float bl = getWidth() / getHeight() * Gdx.graphics.getHeight() / Gdx.graphics.getWidth();
         if (bl < 1) {
-            cutWidth = (1 - bl) * game.WIDTH / 2f;
+            cutWidth = (1 - bl) * getWidth() / 2f;
             cutHeight = 0;
             getRoot().setScale(bl, 1);
             getRoot().setPosition(cutWidth, 0);
         } else if (bl > 1) {
             cutWidth = 0;
-            cutHeight = (1 - 1 / bl) * game.HEIGHT / 2f;
+            cutHeight = (1 - 1 / bl) * getHeight() / 2f;
             getRoot().setScale(1, 1 / bl);
             getRoot().setPosition(0, cutHeight);
         }
     }
 
     public float getCutWidth() {
-        return cutWidth;
+        return cutWidth / getRoot().getScaleX();
     }
 
     public float getCutHeight() {
-        return cutHeight;
+        return cutHeight / getRoot().getScaleY();
+    }
+
+    public float getCutAndWidth() {
+        return getWidth() + cutWidth / getRoot().getScaleX();
+    }
+
+    public float getCutAndHeight() {
+        return getHeight() + cutHeight / getRoot().getScaleY();
+    }
+
+    public float getFullWidth() {
+        return getWidth() + cutWidth / getRoot().getScaleX() * 2;
+    }
+
+    public float getFullHeight() {
+        return getHeight() + cutHeight / getRoot().getScaleY() * 2;
     }
 
     public String getName() {
@@ -131,6 +145,7 @@ public abstract class VStage extends Stage {
         if (isOff == true)
             return false;
         if (Gdx.app.getType() == ApplicationType.Desktop) {
+            game.var3dListener.keyDown(arg0);
             if (arg0 == Input.Keys.DEL) {
                 back();
             } else if (arg0 == Input.Keys.F) {
@@ -147,6 +162,15 @@ public abstract class VStage extends Stage {
             if (getRoot().getTouchable() == Touchable.enabled) {
                 back();
             }
+        }
+        return false;
+    }
+
+    public boolean keyUp(int arg0) {
+        if (isOff == true)
+            return false;
+        if (Gdx.app.getType() == ApplicationType.Desktop) {
+            game.var3dListener.keyUp(arg0);
         }
         return false;
     }

@@ -215,6 +215,12 @@ public abstract class VIOSLauncher extends IOSApplication.Delegate implements
 
     }
 
+    public void openAd(int aglin) {
+    }
+
+    public void openAdbig(int aglin) {
+    }
+
     @Override
     public void closeAd() {
 
@@ -340,6 +346,12 @@ public abstract class VIOSLauncher extends IOSApplication.Delegate implements
 
     @Override
     public void getLineNumber(Actor actor) {
+    }
 
+    public void keyDown(int key) {
+
+    }
+
+    public void keyUp(int key) {
     }
 }

@@ -1,6 +1,7 @@
 package var3d.net.center.desktop;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
@@ -8,11 +9,16 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.EventListener;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Clipboard;
 import com.badlogic.gdx.utils.I18NBundle;
+import com.badlogic.gdx.utils.IntArray;
 import com.badlogic.gdx.utils.StringBuilder;
 
 import org.lwjgl.opengl.Display;
@@ -143,6 +149,12 @@ public abstract class VDesktopLauncher implements VListener {
     public void openAd(String str) {
         // TODO Auto-generated method stub
 
+    }
+
+    public void openAd(int aglin) {
+    }
+
+    public void openAdbig(int aglin) {
     }
 
     @Override
@@ -499,8 +511,7 @@ public abstract class VDesktopLauncher implements VListener {
         Display.setTitle(load.getName() + "加密完成");
     }
 
-    public static LwjglApplicationConfiguration getConfig(int width,
-                                                          int height, float scale) {
+    public static LwjglApplicationConfiguration getConfig(int width, int height, float scale) {
         LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
         config.width = (int) (width * scale);
         config.height = (int) (height * scale);
@@ -514,32 +525,216 @@ public abstract class VDesktopLauncher implements VListener {
     public void create() {
     }
 
+    //以下是简易UI编辑器
+
     private boolean isEdit = false;
     private HashMap<Actor, Data> allDatas = new HashMap<Actor, Data>();
     //private ToolFrame toolFrame;
 
     public class Data {
+        public HashMap<Actor, Data> sonDatas = new HashMap<Actor, Data>();//用来保存儿子们的属性
         public Array<EventListener> allListeners;//该Actor本来的监听
         public boolean isEdit = false;//是否被编辑
-        public Field filed;
-
+        public Field filed;//保存对应的对象
+        public Touchable prefTouchable;//最初的Actor响应属性
+        public int variableType = 1;//成员变量1，局部变量2，匿名变量0, 暂不可保存变量-1
+        public String name = null;//变量名
     }
+
+    private String getPrefName() {
+        Data data = allDatas.get(prefActor);
+        if (data == null) return "匿名控件";
+        if (data.variableType == -1) {
+            return "匿名控件";
+        } else if (data.variableType == 1) {
+            return data.name + "控件";
+        } else if (data.variableType == 2) {
+            return data.name + "控件";
+        } else {
+            return "匿名控件";
+        }
+    }
+
+    private IntArray keys = new IntArray();
+
+    public void keyDown(int key) {
+        keys.add(key);
+        if (nowActor == null) return;
+        if (keys.size == 1) {
+            //单按钮
+            switch (key) {
+                case Input.Keys.LEFT://左移
+                    moveByActor(-1, 0);
+                    break;
+                case Input.Keys.RIGHT://右移
+                    moveByActor(1, 0);
+                    break;
+                case Input.Keys.UP://上移
+                    moveByActor(0, 1);
+                    break;
+                case Input.Keys.DOWN://下移
+                    moveByActor(0, -1);
+                    break;
+            }
+        } else if (keys.size == 2) {
+            //双按钮组合
+            int fistKey = keys.get(0);
+            if (fistKey == Input.Keys.SHIFT_RIGHT) fistKey = Input.Keys.SHIFT_LEFT;
+            if (7 < fistKey && fistKey < 11) {
+                int speed = fistKey == 8 ? 10 : fistKey == 9 ? 50 : 100;
+                switch (key) {
+                    case Input.Keys.LEFT://左移
+                        moveByActor(-speed, 0);
+                        break;
+                    case Input.Keys.RIGHT://右移
+                        moveByActor(speed, 0);
+                        break;
+                    case Input.Keys.UP://上移
+                        moveByActor(0, speed);
+                        break;
+                    case Input.Keys.DOWN://下移
+                        moveByActor(0, -speed);
+                        break;
+                }
+            } else {
+                switch (fistKey) {
+                    case Input.Keys.SHIFT_LEFT:
+                        switch (keys.get(1)) {
+                            case Input.Keys.C: //居中对齐
+                                if (prefActor != null) {
+                                    messeg = "相对" + getPrefName() + "居中对齐";
+                                    moveActor(prefActor.getX(Align.center), prefActor.getY(Align.center), Align.center);
+                                }
+                                break;
+                            case Input.Keys.LEFT://居左对齐
+                                if (prefActor != null) {
+                                    messeg = "相对" + getPrefName() + "居左对齐";
+                                    moveActor(prefActor.getX(), nowActor.getY(), Align.bottomLeft);
+                                }
+                                break;
+                            case Input.Keys.RIGHT://居右对齐
+                                if (prefActor != null) {
+                                    messeg = "相对" + getPrefName() + "居右对齐";
+                                    moveActor(prefActor.getRight(), nowActor.getY(), Align.bottomRight);
+                                }
+                                break;
+                            case Input.Keys.UP://居上对齐
+                                if (prefActor != null) {
+                                    messeg = "相对" + getPrefName() + "居上对齐";
+                                    moveActor(nowActor.getX(), prefActor.getTop(), Align.topLeft);
+                                }
+                                break;
+                            case Input.Keys.DOWN://居下对齐
+                                if (prefActor != null) {
+                                    messeg = "相对" + getPrefName() + "居下对齐";
+                                    moveActor(nowActor.getX(), prefActor.getY(), Align.bottomLeft);
+                                }
+                                break;
+                        }
+                        break;
+                    case Input.Keys.TAB:
+                        Stage father = nowActor.getStage();
+                        switch (key) {
+                            case Input.Keys.C: //actor相对于父元素居中
+                                messeg = "相对父元素居中对齐";
+                                moveActor(father.getWidth() / 2, father.getHeight() / 2, Align.center);
+                                break;
+                            case Input.Keys.LEFT://。。。。居左
+                                messeg = "相对父元素居左对齐";
+                                moveActor(0, nowActor.getY(), Align.bottomLeft);
+                                break;
+                            case Input.Keys.RIGHT://....居右
+                                messeg = "相对父元素居右对齐";
+                                moveActor(father.getWidth(), nowActor.getY(), Align.bottomRight);
+                                break;
+                            case Input.Keys.UP://。。。。居上
+                                messeg = "相对父元素居上对齐";
+                                moveActor(nowActor.getX(), father.getHeight(), Align.topLeft);
+                                break;
+                            case Input.Keys.DOWN://....居下
+                                messeg = "相对父元素居下对齐";
+                                moveActor(nowActor.getX(), 0, Align.bottomLeft);
+                                break;
+                        }
+                        break;
+                    case Input.Keys.ALT_LEFT:
+                        break;
+                }
+            }
+        } else if (keys.size == 3) {
+            //三按钮组合
+            int fistKey = keys.get(0);
+            if (fistKey == Input.Keys.SHIFT_RIGHT) fistKey = Input.Keys.SHIFT_LEFT;
+            switch (fistKey) {
+                case Input.Keys.SHIFT_LEFT:
+                    if ((keys.get(1) == Input.Keys.LEFT && keys.get(2) == Input.Keys.RIGHT)
+                            || (keys.get(1) == Input.Keys.RIGHT && keys.get(2) == Input.Keys.LEFT)) {
+                        //同时按下左右键，x居中对齐
+                        if (prefActor != null) {
+                            messeg = "相对" + getPrefName() + "水平居中对齐";
+                            moveActor(prefActor.getX(Align.center), nowActor.getY(), Align.bottom);
+                        }
+                    } else if ((keys.get(1) == Input.Keys.UP && keys.get(2) == Input.Keys.DOWN)
+                            || (keys.get(1) == Input.Keys.DOWN && keys.get(2) == Input.Keys.UP)) {
+                        //同时按下上下键，y居中对齐
+                        if (prefActor != null) {
+                            messeg = "相对" + getPrefName() + "垂直居中对齐";
+                            moveActor(nowActor.getX(), prefActor.getY(Align.center), Align.left);
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    public void keyUp(int key) {
+        keys.removeValue(key);
+    }
+
+    private void moveByActor(float x, float y) {
+        if (nowActor == null) return;
+        nowActor.moveBy(x, y);
+        String fx = x < 0 ? "左" : x > 0 ? "右" : y < 0 ? "下" : "上";
+        int speed = (int) Math.abs(x) + (int) Math.abs(y);
+        messeg = fx + "移" + speed + "像素";
+        msg(nowActor, allDatas.get(nowActor), "X:" + (int) nowActor.getX() + ",Y:" + (int) nowActor.getY());
+    }
+
+    private void moveActor(float x, float y, int align) {
+        if (nowActor == null) return;
+        nowActor.setPosition(x, y, align);
+        msg(nowActor, allDatas.get(nowActor), "X:" + (int) nowActor.getX() + ",Y:" + (int) nowActor.getY());
+    }
+
+    private Actor prefActor, nowActor;//当前编辑的Actor
 
     public void edit(VStage stage) {
         if (isEdit) {
             isEdit = false;
+            Display.setTitle("UI编辑关闭");
             for (final Actor actor : stage.getRoot().getChildren()) {
+                Data data = allDatas.get(actor);
                 actor.setDebug(false);
+                actor.setTouchable(data.prefTouchable);
+                if (actor instanceof Group) {
+                    //如果是Group，那就需要想办法把儿子们禁止响应了
+                    Group group = (Group) actor;
+                    for (Actor son : group.getChildren()) {
+                        Data sonData = data.sonDatas.get(son);
+                        son.setTouchable(sonData.prefTouchable);
+                    }
+                }
                 actor.clearListeners();
-                Array<EventListener> listeners = allDatas.get(actor).allListeners;
-                if (listeners != null) {
-                    for (EventListener listener : listeners) {
+                if (data.allListeners != null) {
+                    for (EventListener listener : data.allListeners) {
                         actor.addListener(listener);
                     }
                 }
             }
+            allDatas.clear();
         } else {
             isEdit = true;
+            Display.setTitle("UI编辑开启");
             //new SubFrame();
             //用反射取得该Actor的变量名
             Class clazz = stage.getClass();
@@ -554,34 +749,78 @@ public abstract class VDesktopLauncher implements VListener {
                             continue;
                         } else if (actor == object) {
                             data.filed = field;
+                            data.variableType = 1;
+                            data.name = data.filed.getName();
                             break;
                         }
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
                     }
                 }
-                actor.setDebug(true);
+                data.prefTouchable = actor.getTouchable();
+                //actor.setDebug(true);
+                actor.setTouchable(Touchable.enabled);
                 data.allListeners = actor.getListeners();
+                if (actor instanceof Group) {
+                    //如果是Group，那就需要想办法把儿子们禁止响应了
+                    Group group = (Group) actor;
+                    for (Actor son : group.getChildren()) {
+                        Data sonData = new Data();
+                        sonData.prefTouchable = son.getTouchable();
+                        data.sonDatas.put(son, sonData);
+                        son.setTouchable(Touchable.disabled);
+                    }
+                }
                 allDatas.put(actor, data);
+                if (data.filed == null) {
+                    //说明是匿名变量或者局部变量，直接抓源码分析
+                    String name = getPartialVariable(stage, actor);
+                    if (name == null) {
+                        data.variableType = -1;
+                    } else if (name.equals("?")) {
+                        data.variableType = 0;
+                    } else {
+                        data.variableType = 2;
+                        data.name = name;
+                    }
+                }
                 actor.clearListeners();
                 actor.addListener(new InputListener() {
                     private float starX, starY;
 
                     public boolean touchDown(InputEvent event, float px, float py, int pointer, int but) {
+                        if (nowActor != actor) {
+                            messeg = "选取";
+                            if (prefActor != null) prefActor.setDebug(false);
+                            prefActor = nowActor;
+                            if (prefActor != null) prefActor.setDebug(true);
+                            nowActor = actor;
+                            nowActor.setDebug(true);
+                        }
                         starX = px;
                         starY = py;
-                        String name = data.filed == null ? "局部变量" : data.filed.getName();
-                        Display.setTitle(actor.getClass().getSimpleName() + ":" + name
-                                + "(" + (int) actor.getX() + "," + (int) actor.getY() + ")");
+                        String xy;
+                        xy = "X:" + (int) actor.getX() + ",Y:" + (int) actor.getY();
+                        msg(actor, data, xy);
                         return true;
                     }
 
                     public void touchDragged(InputEvent event, float x, float y, int pointer) {
-                        actor.moveBy(x - starX, y - starY);
+                        if (keys.size == 0) {
+                            messeg = "拖动";
+                            actor.moveBy(x - starX, y - starY);
+                        } else if (keys.size == 1) {
+                            int key = keys.get(0);
+                            if (key == Input.Keys.X) {
+                                messeg = "垂直锁定";
+                                actor.moveBy(x - starX, 0);
+                            } else if (key == Input.Keys.Y) {
+                                messeg = "水平锁定";
+                                actor.moveBy(0, y - starY);
+                            }
+                        }
                         data.isEdit = true;
-                        String name = data.filed == null ? "局部变量" : data.filed.getName();
-                        Display.setTitle(actor.getClass().getSimpleName() + ":" + name
-                                + "(" + (int) actor.getX() + "," + (int) actor.getY() + ")");
+                        msg(actor, data, "X:" + (int) actor.getX() + ",Y:" + (int) actor.getY());
                     }
 
                     public void touchUp(InputEvent event, float px, float py,
@@ -594,6 +833,27 @@ public abstract class VDesktopLauncher implements VListener {
         }
     }
 
+
+    private String messeg = "";//操作消息
+
+    private void msg(Actor actor, Data data, String xy) {
+        String name, type = "";
+        if (data.variableType == -1) {
+            name = "无法保存的Actor";
+        } else if (data.variableType == 1) {
+            type = "成员变量";
+            name = data.name;
+        } else if (data.variableType == 2) {
+            type = "局部变量";
+            name = data.name;
+        } else {
+            type = "匿名变量";
+            name = "";
+        }
+        Display.setTitle(type + ":" + name + " 类型:" + actor.getClass().getSimpleName()
+                + " 坐标:" + xy + " 消息:" + messeg);
+    }
+
     private class SubFrame extends JFrame {
         public SubFrame() {
             setTitle("子窗口");
@@ -602,23 +862,78 @@ public abstract class VDesktopLauncher implements VListener {
             setLocationByPlatform(true);
             setVisible(true);
         }
+
+    }
+
+
+    //用来获取actor的局部变量名，除非为匿名变量
+    private String getPartialVariable(VStage stage, Actor actor) {
+        FileHandle fileHandle = getStageJavaFile(stage);
+        if (fileHandle == null) return null;
+        String javaStr = fileHandle.readString();
+        String[] javaStrLines = javaStr.split("\n");//把代码按行号存放进数组中
+        Data data = allDatas.get(actor);
+        StackTraceElement[] elements = allStacks.get(actor);
+        if (elements == null) return null;//为null表示这是非UI类创建的控件，以后再实现非UI类创建的控件
+        String str_class = elements[2].getClassName();//变量所在的类全名
+        if (str_class.equals(stage.getClass().getName())) {//如果所在的类就是传入的这个Stage
+            int linNumber = elements[2].getLineNumber();//获取该变量调用初始化所在的行号
+            Array<String> javaStrArr = new Array<>();
+            int partNumber = 0;
+            for (int i = linNumber - 1; i > 1; i--) {
+                String javaStrLine = javaStrLines[i].trim();
+                javaStrLine = javaStrLine.replaceAll(" +", " ");
+                javaStrLine = javaStrLine.replaceAll(" \\.", ".");
+                javaStrLine = javaStrLine.replaceAll("\\. ", ".");
+                javaStrLine = javaStrLine.replaceAll(" ", "㜶");
+                //移除注释
+                String noAnnotations = javaStrLine.replaceAll(
+                        "\\/\\/[^\\n]*|\\/\\*([^\\*^\\/]*|[\\*^\\/*]*|[^\\**\\/]*)*\\*+\\/", "");
+                if (noAnnotations.indexOf(";") != -1) {
+                    partNumber++;
+                    if (partNumber == 2) {
+                        int i1 = noAnnotations.lastIndexOf(";");
+                        javaStrArr.add(noAnnotations.substring(i1 + 1));
+                        //javaStrLines[i] = noAnnotations.substring(0, i1);
+                        break;
+                    } else {
+                        javaStrArr.add(noAnnotations);
+                    }
+                } else {
+                    javaStrArr.add(noAnnotations);
+                    //javaStrLines[i] = "";
+                }
+            }
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = javaStrArr.size - 1; i > -1; i--) {
+                String strLine = javaStrArr.get(i);
+                stringBuilder.append("㜶");
+                stringBuilder.append(strLine);
+            }
+            String codeStr = stringBuilder.toString();
+            int idex;
+            if ((idex = codeStr.indexOf("=")) != -1) {
+                String name = codeStr.substring(0, idex).replaceAll("㜶", " ").trim();
+                name = name.replaceAll(" +", " ");
+                idex = name.lastIndexOf(" ");
+                if (idex != -1) {
+                    name = name.substring(name.lastIndexOf(" "));
+                }
+                return name.trim();
+            } else {
+                return "?";//匿名变量
+            }
+        }
+
+
+        return null;
     }
 
     //保存编辑过的Actor
     public void saveUI(VStage stage) {
         //遍历stage中的actor，并找出该actor在stage初始化时的行号位置
-        //获取stage的java文件
-        String proName = Gdx.files.getLocalStoragePath().replaceAll("\\/android\\/assets\\/", "");
-        String pack = stage.getClass().getPackage().toString().replaceAll("package ", "");
-        pack = pack.replaceAll("\\.", "/");
-        String tryPath = proName + "/core/src/" + pack + "/" + stage.getClass().getSimpleName() + ".java";
-        FileHandle fileHandle = Gdx.files.absolute(tryPath);
-        if (!fileHandle.exists()) {
-            //如果不存在，则找另一个路径
-            tryPath = proName + "/core/src/main/java/" + pack + "/" + stage.getClass().getSimpleName() + ".java";
-            fileHandle = Gdx.files.absolute(tryPath);
-        }
-        if (!fileHandle.exists()) return;//如果还是读取不到，中断所有操作
+        FileHandle fileHandle = getStageJavaFile(stage);
+        if (fileHandle == null) return;
         String javaStr = fileHandle.readString();
         String[] javaStrLines = javaStr.split("\n");//把代码按行号存放进数组中
         for (final Actor actor : stage.getRoot().getChildren()) {
@@ -631,33 +946,43 @@ public abstract class VDesktopLauncher implements VListener {
                     int linNumber = elements[2].getLineNumber();
                     int firstLinNumber = linNumber;
                     Array<String> javaStrArr = new Array<>();
+                    int partNumber = 0;
                     for (int i = linNumber - 1; i > 1; i--) {
-                        String javaStrLine = javaStrLines[i].replaceAll(" ", "");
-                        int idex0;
-                        if ((idex0 = javaStrLine.indexOf("new")) != -1) {
-                            //含有new字符,判断new前面是否为=号或(
-                            if (idex0 > 0) {
-                                String pref = javaStrLine.charAt(idex0 - 1) + "";
-                                if (pref.equals("(") || pref.equals("=") || pref.equals(";")) {
-                                    javaStrLine = javaStrLine.replaceAll("new", "new ");
-                                }
-                            }
-                        }
+                        String javaStrLine = javaStrLines[i].trim();
+                        javaStrLine = javaStrLine.replaceAll(" +", " ");
+                        javaStrLine = javaStrLine.replaceAll(" \\.", ".");
+                        javaStrLine = javaStrLine.replaceAll("\\. ", ".");
+                        javaStrLine = javaStrLine.replaceAll(" ", "㜶");
                         //移除注释
-                        String noAnnotations = javaStrLine.replaceAll("\\/\\/[^\\n]*|\\/\\*([^\\*^\\/]*|[\\*^\\/*]*|[^\\**\\/]*)*\\*+\\/", "");
-                        javaStrArr.add(noAnnotations);
-                        javaStrLines[i] = "";
-                        if (noAnnotations.indexOf("game.") != -1) {
-                            break;
+                        String noAnnotations = javaStrLine.replaceAll(
+                                "\\/\\/[^\\n]*|\\/\\*([^\\*^\\/]*|[\\*^\\/*]*|[^\\**\\/]*)*\\*+\\/", "");
+                        if (noAnnotations.indexOf(";") != -1) {
+                            partNumber++;
+                            if (partNumber == 2) {
+                                int i1 = noAnnotations.lastIndexOf(";");
+                                javaStrArr.add(noAnnotations.substring(i1 + 1));
+                                break;
+                            } else {
+                                javaStrArr.add(noAnnotations);
+                                javaStrLines[i] = "";
+                            }
+                        } else {
+                            javaStrArr.add(noAnnotations);
+                            javaStrLines[i] = "";
                         }
                     }
-                    firstLinNumber -= javaStrArr.size;
+                    firstLinNumber -= javaStrArr.size - 1;
                     StringBuilder stringBuilder = new StringBuilder();
-                    for (int i = javaStrArr.size - 1; i > -1; i--) {
-                        String strLine = javaStrArr.get(i);
+                    for (int len = javaStrArr.size - 1, i = len; i > -1; i--) {
+                        String strLine = javaStrArr.get(i).trim();
+                        stringBuilder.append("㜶");
                         stringBuilder.append(strLine);
                     }
-                    String codeStr = stringBuilder.toString();
+                    String codeStr = stringBuilder.toString().replaceAll("㜶+", "㜶");
+                    if (codeStr.startsWith("㜶")) {
+                        codeStr = codeStr.substring(1);
+                    }
+                    // Gdx.app.log("aaaaaa", codeStr);
                     int idex;
                     if ((idex = codeStr.lastIndexOf("setPosition(")) != -1) {
                         //说明拥有setPosition方法
@@ -665,41 +990,63 @@ public abstract class VDesktopLauncher implements VListener {
                         s1 = s1.substring(0, s1.indexOf(")") + 1);
                         codeStr = codeStr.replace(s1, "setPosition(" + (int) actor.getX() + "," + (int) actor.getY() + ")");
                     } else {
-                        //如果没有setPosition方法,找到倒数第一个点
-                        idex = codeStr.lastIndexOf(".");
+                        //如果没有setPosition方法,那么去定位show,getActor()
+                        idex = codeStr.lastIndexOf(".show(");
+                        if (idex == -1) idex = codeStr.lastIndexOf(".getActor(");
                         //接着把字符分为两段
                         String s1 = codeStr.substring(0, idex);
                         String s2 = codeStr.substring(idex);
                         codeStr = s1 + ".setPosition(" + (int) actor.getX() + "," + (int) actor.getY() + ")" + s2;
                     }
                     List<String> listStr = new ArrayList<String>();
-                    int len = codeStr.length();
-                    int width = 100;
-                    int lineNum = len % width == 0 ? len / width : len / width + 1;
-                    String subStr;
-                    for (int i = 1; i <= lineNum; i++) {
-                        if (i < lineNum) {
-                            subStr = codeStr.substring((i - 1) * width, i * width);
-                        } else {
-                            subStr = codeStr.substring((i - 1) * width, len);
+                    String subStr, prefStr = "";
+                    int prefIndex = 0, width = 90;
+                    for (int i = 0; ; i++) {
+                        int index = codeStr.indexOf(".", i);
+                        if (index == -1) {
+                            listStr.add(prefStr + codeStr.substring(prefIndex));
+                            break;
                         }
-                        listStr.add(subStr);
+                        subStr = codeStr.substring(prefIndex, index);
+                        if (prefStr.length() + subStr.length() > width) {
+                            listStr.add(prefStr);
+                            prefIndex = index;
+                            prefStr = subStr;
+                        } else {
+                            prefStr += subStr;
+                            prefIndex = index;
+                        }
                     }
                     StringBuilder out = new StringBuilder();
                     for (int i = 0; i < listStr.size(); i++) {
                         out.append("        ");
-                        out.append(listStr.get(i));
+                        // Gdx.app.log("bbbbbb", listStr.get(i));
+                        String sline = listStr.get(i).replaceAll("㜶", " ");
+                        //Gdx.app.log("cccccc", sline);
+                        sline = sline.replaceAll(" \\.", ".");
+                        sline = sline.replaceAll("\\. ", ".");
+                        out.append(sline);
                         if (i < listStr.size() - 1) out.append("\n");
                     }
                     javaStrLines[firstLinNumber] = out.toString();
+                    // Gdx.app.log("bbbbbb", out.toString());
                 }
             }
         }
         //重新组装java代码
         StringBuilder out = new StringBuilder();
+        boolean prefLineIsNull = false;
         for (int i = 0; i < javaStrLines.length; i++) {
+            String thisline = javaStrLines[i];
+            boolean nowNull = thisline.replaceAll(" ", "").length() == 0;
+            if (prefLineIsNull && nowNull) {
+                prefLineIsNull = nowNull;
+                continue;
+            } else {
+                prefLineIsNull = nowNull;
+            }
             out.append(javaStrLines[i]);
-            if (i < javaStrLines.length - 1) out.append("\n");
+            out.append("\n");
         }
         //保存java代码
         fileHandle.writeString(out.toString(), false);
@@ -707,7 +1054,27 @@ public abstract class VDesktopLauncher implements VListener {
         Gdx.app.exit();
     }
 
+    //读取Stage java文件
+    private HashMap<VStage, FileHandle> stageFiles = new HashMap<VStage, FileHandle>();
 
+    private FileHandle getStageJavaFile(VStage stage) {
+        if (stageFiles.get(stage) != null) return stageFiles.get(stage);
+        String proName = Gdx.files.getLocalStoragePath().replaceAll("\\/android\\/assets\\/", "");
+        String pack = stage.getClass().getPackage().toString().replaceAll("package ", "");
+        pack = pack.replaceAll("\\.", "/");
+        String tryPath = proName + "/core/src/" + pack + "/" + stage.getClass().getSimpleName() + ".java";
+        FileHandle fileHandle = Gdx.files.absolute(tryPath);
+        if (!fileHandle.exists()) {
+            //如果不存在，则找另一个路径
+            tryPath = proName + "/core/src/main/java/" + pack + "/" + stage.getClass().getSimpleName() + ".java";
+            fileHandle = Gdx.files.absolute(tryPath);
+        }
+        if (!fileHandle.exists()) return null;
+        stageFiles.put(stage, fileHandle);
+        return fileHandle;
+    }
+
+    //获取行号接口实现
     private HashMap<Actor, StackTraceElement[]> allStacks = new HashMap<>();
 
     public void getLineNumber(Actor actor) {

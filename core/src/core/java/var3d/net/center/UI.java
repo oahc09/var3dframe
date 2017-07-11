@@ -1,5 +1,6 @@
 package var3d.net.center;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Action;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -9,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.utils.Align;
 
 public class UI<T extends Actor> {
     private T t;
@@ -29,20 +31,82 @@ public class UI<T extends Actor> {
     }
 
     public T show() {
-        game.getStage().addActor(t);
         game.var3dListener.getLineNumber(t);
+        show(game.getStage());
+        return t;
+    }
+
+    public T show(Stage stage) {
+        game.var3dListener.getLineNumber(t);
+        stage.addActor(t);
+        return t;
+    }
+
+    public T show(int aglin) {
+        game.var3dListener.getLineNumber(t);
+        show(game.getStage(), .5f, .5f, aglin);
+        return t;
+    }
+
+    public T show(Stage stage, int aglin) {
+        game.var3dListener.getLineNumber(t);
+        show(stage, .5f, .5f, aglin);
+        return t;
+    }
+
+    //设置actor在stage中的比例坐标
+    public T show(float sx, float sy) {
+        game.var3dListener.getLineNumber(t);
+        show(game.getStage(), sx, sy);
+        return t;
+    }
+
+    //设置actor在stage中的比例坐标
+    public T show(float sx, float sy, int aglin) {
+        game.var3dListener.getLineNumber(t);
+        show(game.getStage(), sx, sy, aglin);
+        return t;
+    }
+
+    //设置actor在stage中的比例坐标
+    public T show(Stage stage, float sx, float sy) {
+        game.var3dListener.getLineNumber(t);
+        show(stage, sx, sy, Align.bottomLeft);
+        return t;
+    }
+
+    //设置actor在stage中的比例坐标
+    public T show(Stage stage, float sx, float sy, int aglin) {
+        game.var3dListener.getLineNumber(t);
+        stage.addActor(t);
+        if (stage instanceof VStage) {
+            VStage vStage = (VStage) stage;
+            t.setPosition(vStage.getFullWidth() * sx - vStage.getCutWidth(), vStage.getFullHeight() * sy
+                    - vStage.getCutHeight(), aglin);
+        } else {
+            t.setPosition(stage.getWidth() * sx, stage.getHeight() * sy, aglin);
+        }
         return t;
     }
 
     public T show(Group group) {
         group.addActor(t);
-        game.var3dListener.getLineNumber(t);
         return t;
     }
 
-    public T show(Stage stage) {
-        stage.addActor(t);
-        game.var3dListener.getLineNumber(t);
+    public T show(Group group, int align) {
+        show(group, .5f, .5f, align);
+        return t;
+    }
+
+    public T show(Group group, float sx, float sy) {
+        show(group, sx, sy, Align.bottomLeft);
+        return t;
+    }
+
+    public T show(Group group, float sx, float sy, int aglin) {
+        group.addActor(t);
+        t.setPosition(group.getWidth() * sx, group.getHeight() * sy, aglin);
         return t;
     }
 
@@ -76,8 +140,18 @@ public class UI<T extends Actor> {
         return this;
     }
 
+    public UI<T> setX(Actor actor) {
+        t.setX(actor.getX());
+        return this;
+    }
+
     public UI<T> setY(float y) {
         t.setY(y);
+        return this;
+    }
+
+    public UI<T> setY(Actor actor) {
+        t.setY(actor.getY());
         return this;
     }
 
@@ -86,13 +160,28 @@ public class UI<T extends Actor> {
         return this;
     }
 
+    public UI<T> setPosition(Actor actor) {
+        t.setPosition(actor.getX(), actor.getY());
+        return this;
+    }
+
     public UI<T> setPosition(float x, float y, int align) {
         t.setPosition(x, y, align);
         return this;
     }
 
+    public UI<T> setPosition(Actor actor, int align) {
+        t.setPosition(actor.getX(), actor.getY(), align);
+        return this;
+    }
+
     public UI<T> setWidth(float width) {
-        t.setX(width);
+        t.setWidth(width);
+        return this;
+    }
+
+    public UI<T> setWidth(Actor actor) {
+        t.setWidth(actor.getWidth());
         return this;
     }
 
@@ -101,13 +190,28 @@ public class UI<T extends Actor> {
         return this;
     }
 
+    public UI<T> setHeight(Actor actor) {
+        t.setHeight(actor.getHeight());
+        return this;
+    }
+
     public UI<T> setSize(float width, float height) {
         t.setSize(width, height);
         return this;
     }
 
+    public UI<T> setSize(Actor actor) {
+        t.setSize(actor.getWidth(), actor.getHeight());
+        return this;
+    }
+
     public UI<T> setBounds(float x, float y, float width, float height) {
         t.setBounds(x, y, width, height);
+        return this;
+    }
+
+    public UI<T> setBounds(Actor actor) {
+        t.setBounds(actor.getX(), actor.getY(), actor.getWidth(), actor.getHeight());
         return this;
     }
 
@@ -207,9 +311,18 @@ public class UI<T extends Actor> {
         return this;
     }
 
-    public UI<T> copyBounds(Actor actor) {
-        t.setBounds(actor.getX(), actor.getY(), actor.getWidth(),
-                actor.getHeight());
+    public UI<T> setStroke(Color strokeColor) {
+        if (t instanceof VLabel) {
+            ((VLabel) t).setStroke(strokeColor);
+        } else Gdx.app.error("Var3D框架消息", "setStroke(Color strokeColor)方法仅在类型VLabel上有效");
+        return this;
+    }
+
+    public UI<T> setStroke(Color strokeColor, float strokeWidth) {
+        if (t instanceof VLabel) {
+            ((VLabel) t).setStroke(strokeColor, strokeWidth);
+        } else
+            Gdx.app.error("Var3D框架消息", "setStroke(Color strokeColor, float strokeWidth)方法仅在类型VLabel上有效");
         return this;
     }
 }
