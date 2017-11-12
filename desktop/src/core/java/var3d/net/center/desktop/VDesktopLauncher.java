@@ -97,6 +97,11 @@ public abstract class VDesktopLauncher implements VListener {
 
     }
 
+    public void getTopList(String id) {
+        // TODO Auto-generated method stub
+
+    }
+
     @Override
     public void log(String txt) {
         // TODO Auto-generated method stub
@@ -471,8 +476,8 @@ public abstract class VDesktopLauncher implements VListener {
             // 如果是图片,就跳过
             return;
         }
-        load.delete();
-        FileOutputStream fos = new FileOutputStream(load);
+        File defFile=new File(load.getPath()+"_var3d_def");
+        FileOutputStream fos = new FileOutputStream(defFile);
         int XOR_CONST = defByte[0] & 0xFF;
         fos.write(defByte[1] ^ XOR_CONST);
         int read;
@@ -482,6 +487,8 @@ public abstract class VDesktopLauncher implements VListener {
         fos.flush();
         fos.close();
         fis.close();
+        load.delete();
+        defFile.renameTo(load);
         Display.setTitle(load.getName() + "解密完成");
     }
 
@@ -495,8 +502,8 @@ public abstract class VDesktopLauncher implements VListener {
             // 如果不是图片,就跳过
             return;
         }
-        load.delete();
-        FileOutputStream fos = new FileOutputStream(load);
+        File defFile=new File(load.getPath()+"_var3d_def");
+        FileOutputStream fos = new FileOutputStream(defFile);
         fos.write(XOR_CONST);
         for (byte b : defByte) {
             fos.write(b ^ XOR_CONST);
@@ -508,6 +515,8 @@ public abstract class VDesktopLauncher implements VListener {
         fos.flush();
         fos.close();
         fis.close();
+        load.delete();
+        defFile.renameTo(load);
         Display.setTitle(load.getName() + "加密完成");
     }
 
